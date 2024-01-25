@@ -3,9 +3,15 @@ cmake_minimum_required(VERSION 3.10.0)
 project(gc_polyscope_example)
 
 ### Configure output locations
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
+    string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
+    set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/lib")
+    set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/lib")
+    set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/bin")
+endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 # Print the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -60,6 +66,9 @@ endif()
 
 
 # == Deps
+include_directories("${CMAKE_SOURCE_DIR}/deps/eigen")
+# include_directories("${CMAKE_SOURCE_DIR}/deps/libigl/include")
+set(GC_EIGEN_LOCATION "${CMAKE_SOURCE_DIR}/deps/eigen" CACHE PATH "Path to Eigen's latest version")
 add_subdirectory(deps/geometry-central)
 add_subdirectory(deps/polyscope)
 
