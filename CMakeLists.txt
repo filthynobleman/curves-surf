@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(gc_polyscope_example)
 
+set(CMAKE_CXX_STANDARD 17)
+
 ### Configure output locations
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -70,13 +72,20 @@ include_directories("${CMAKE_SOURCE_DIR}/deps/eigen")
 # include_directories("${CMAKE_SOURCE_DIR}/deps/libigl/include")
 set(GC_EIGEN_LOCATION "${CMAKE_SOURCE_DIR}/deps/eigen" CACHE PATH "Path to Eigen's latest version")
 add_subdirectory(deps/geometry-central)
-add_subdirectory(deps/polyscope)
+# add_subdirectory(deps/polyscope)
 
 # == Build our project stuff
+include_directories("${CMAKE_SOURCE_DIR}/include")
 
 set(SRCS 
-  src/main.cpp
+  "${CMAKE_SOURCE_DIR}/src/main.cpp"
 	# add any other source files here
+  "${CMAKE_SOURCE_DIR}/src/crs/graph/edge.cpp"
+  "${CMAKE_SOURCE_DIR}/src/crs/graph/graph.cpp"
+  "${CMAKE_SOURCE_DIR}/src/crs/voronoi.cpp"
+  "${CMAKE_SOURCE_DIR}/src/crs/sig.cpp"
+  "${CMAKE_SOURCE_DIR}/src/crs/hamiltonian.cpp"
+  "${CMAKE_SOURCE_DIR}/src/crs/io.cpp"
 )
 
 
@@ -85,4 +94,4 @@ add_executable(gc_project "${SRCS}")
 target_include_directories(gc_project PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 # add the args.hxx project which we use for command line args
 target_include_directories(gc_project PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
-target_link_libraries(gc_project geometry-central polyscope)
+target_link_libraries(gc_project geometry-central)

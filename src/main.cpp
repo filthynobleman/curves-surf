@@ -3,12 +3,21 @@
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
 #include "geometrycentral/surface/direction_fields.h"
-
-#include "polyscope/polyscope.h"
-#include "polyscope/surface_mesh.h"
+#include <geometrycentral/surface/exact_geodesics.h>
+#include <geometrycentral/surface/heat_method_distance.h>
+#include <geometrycentral/surface/fast_marching_method.h>
+#include <geometrycentral/surface/flip_geodesics.h>
+#include <geometrycentral/surface/mesh_graph_algorithms.h>
 
 #include "args/args.hxx"
-#include "imgui.h"
+
+#include <crs/graph.hpp>
+#include <crs/voronoi.hpp>
+#include <crs/io.hpp>
+#include <crs/sig.hpp>
+#include <crs/hamiltonian.hpp>
+
+#include <array>
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -17,34 +26,83 @@ using namespace geometrycentral::surface;
 std::unique_ptr<ManifoldSurfaceMesh> mesh;
 std::unique_ptr<VertexPositionGeometry> geometry;
 
-// Polyscope visualization handle, to quickly add data to the surface
-polyscope::SurfaceMesh *psMesh;
-
 // Some algorithm parameters
-float param1 = 42.0;
+std::vector<size_t> samples;
 
 // Example computation function -- this one computes and registers a scalar
 // quantity
 void doWork() {
-  polyscope::warning("Computing Gaussian curvature.\nalso, parameter value = " +
-                     std::to_string(param1));
+  crs::VoronoiPartitioning VP(*mesh, *geometry);
+  for (int i = 0; i < samples.size(); ++i)
+    VP.AddSample(samples[i]);
 
-  geometry->requireVertexGaussianCurvatures();
-  psMesh->addVertexScalarQuantity("curvature",
-                                  geometry->vertexGaussianCurvatures,
-                                  polyscope::DataType::SYMMETRIC);
-}
+  crs::Graph VPG = VP.DualVoronoi();
+  std::cout << "Computed dual Voronoi." << std::endl;
 
-// A user-defined callback, for creating control panels (etc)
-// Use ImGUI commands to build whatever you want here, see
-// https://github.com/ocornut/imgui/blob/master/imgui.h
-void myCallback() {
+  crs::SpheresOfInfluenceInplace(VPG);
+  std::cout << "Computed SIGDT." << std::endl;
 
-  if (ImGui::Button("do work")) {
-    doWork();
+  FlipEdgeNetwork FENet(*mesh, *geometry, {});
+  FENet.supportRewinding = true;
+  FENet.posGeom = geometry.get();
+
+  std::vector<size_t> Samples;
+  std::vector<std::vector<Vector3>> Paths;
+
+  for (size_t i = 0; i < VPG.NumVertices(); ++i)
+  {
+    Samples.emplace_back(VP.GetSample(i));
+    size_t Deg = VPG.NumAdjacents(i);
+    for (size_t jj = 0; jj < Deg; ++jj)
+    {
+      size_t j = VPG.GetAdjacent(i, jj).first;
+      if (j <= i)
+        continue;
+      
+      Vertex vi = mesh->vertex(VP.GetSample(i));
+      Vertex vj = mesh->vertex(VP.GetSample(j));
+
+      auto dijpath = shortestEdgePath(*geometry, vi, vj);
+      FENet.reinitializePath({ dijpath });
+      FENet.iterativeShorten();
+
+      Paths.emplace_back(FENet.getPathPolyline3D().front());
+
+      FENet.rewind();
+    }
   }
 
-  ImGui::SliderFloat("param", &param1, 0., 100.);
+  crs::ExportPoints("test-vertices.obj", Samples, *geometry);
+  crs::ExportEdgeNetwork("test-voronoi.obj", Paths);
+
+  std::cout << "Exported graph." << std::endl;
+
+  crs::GraphPath P;
+  if (!crs::FindHamiltonianPath(VPG, P))
+  {
+    std::cout << "Cannot find a Hamiltonian path." << std::endl;
+    return;
+  }
+
+  std::cout << "Found a Hamiltonian path of length " << P.Length << std::endl;
+  Paths.clear();
+  for (size_t i = 0; i < P.Vertices.size(); ++i)
+  {
+    size_t j = (i + 1) % P.Vertices.size();
+
+    Vertex vi = mesh->vertex(VP.GetSample(P.Vertices[i]));
+    Vertex vj = mesh->vertex(VP.GetSample(P.Vertices[j]));
+
+    auto dijpath = shortestEdgePath(*geometry, vi, vj);
+    FENet.reinitializePath({ dijpath });
+    FENet.iterativeShorten();
+
+    Paths.emplace_back(FENet.getPathPolyline3D().front());
+
+    FENet.rewind();
+  }
+  
+  crs::ExportEdgeNetwork("test-hamilton.obj", Paths);
 }
 
 int main(int argc, char **argv) {
@@ -52,6 +110,7 @@ int main(int argc, char **argv) {
   // Configure the argument parser
   args::ArgumentParser parser("geometry-central & Polyscope example project");
   args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
+  args::Positional<std::string> inputSamples(parser, "samples", "The path to a samples file.");
 
   // Parse args
   try {
@@ -71,36 +130,15 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  // Initialize polyscope
-  polyscope::init();
-
-  // Set the callback function
-  polyscope::state::userCallback = myCallback;
+  crs::ImportPoints(args::get(inputSamples), samples);
+  // std::sort(samples.begin(), samples.end());
+  // samples.erase(std::unique(samples.begin(), samples.end()));
 
   // Load mesh
   std::tie(mesh, geometry) = readManifoldSurfaceMesh(args::get(inputFilename));
 
-  // Register the mesh with polyscope
-  psMesh = polyscope::registerSurfaceMesh(
-      polyscope::guessNiceNameFromPath(args::get(inputFilename)),
-      geometry->inputVertexPositions, mesh->getFaceVertexList(),
-      polyscopePermutations(*mesh));
-
-  // Set vertex tangent spaces
-  geometry->requireVertexTangentBasis();
-  VertexData<Vector3> vBasisX(*mesh);
-  VertexData<Vector3> vBasisY(*mesh);
-  for (Vertex v : mesh->vertices()) {
-    vBasisX[v] = geometry->vertexTangentBasis[v][0];
-    vBasisY[v] = geometry->vertexTangentBasis[v][1];
-  }
-
-  auto vField =
-      geometrycentral::surface::computeSmoothestVertexDirectionField(*geometry);
-  psMesh->addVertexTangentVectorQuantity("VF", vField, vBasisX, vBasisY);
-
-  // Give control to the polyscope gui
-  polyscope::show();
+  doWork();
+  
 
   return EXIT_SUCCESS;
 }
