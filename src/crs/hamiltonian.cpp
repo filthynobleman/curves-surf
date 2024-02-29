@@ -44,65 +44,15 @@ bool _Prune(const crs::Graph& G,
         if (Visited[i] && i != StartVertex)
             continue;
 
-        if (_NumAvailableNeighs(G, Visited, i, StartVertex, CurVertex) <= 1)
+        size_t NumAN = _NumAvailableNeighs(G, Visited, i, StartVertex, CurVertex);
+
+        if (NumAN < 1)
+            return true;
+
+        if (i != CurVertex && NumAN <= 1)
             return true;
     }
 
-    return false;
-}
-
-
-bool _FindHamiltonianPath(const crs::Graph& G,
-                          std::vector<bool>& Visited,
-                          size_t& NumVisited,
-                          size_t CurVertex,
-                          size_t StartVertex,
-                          crs::GraphPath& Path)
-{
-    Visited[CurVertex] = true;
-    NumVisited++;
-    if (NumVisited == G.NumVertices())
-    {
-        crs::Edge E(CurVertex, StartVertex);
-        if (G.GetEdge(CurVertex, StartVertex, E))
-        {
-            Path.Vertices.push_back(CurVertex);
-            Path.Length += E.Weight();
-            return true;
-        }
-        Visited[CurVertex] = false;
-        NumVisited--;
-        return false;
-    }
-
-    if (_Prune(G, Visited, StartVertex, CurVertex))
-    {
-        Visited[CurVertex] = false;
-        NumVisited--;
-        return false;
-    }
-    
-    size_t Deg = G.NumAdjacents(CurVertex);
-    for (size_t jj = 0; jj < Deg; ++jj)
-    {
-        size_t j;
-        double w;
-        std::tie(j, w) = G.GetAdjacent(CurVertex, jj);
-
-        if (Visited[j])
-            continue;
-
-        Path.Vertices.push_back(CurVertex);
-        double OldLen = Path.Length;
-        Path.Length += w;
-        if (_FindHamiltonianPath(G, Visited, NumVisited, j, StartVertex, Path))
-            return true;
-        Path.Vertices.pop_back();
-        Path.Length = OldLen;
-    }
-
-    Visited[CurVertex] = false;
-    NumVisited--;
     return false;
 }
 
@@ -114,10 +64,80 @@ void FindHamiltonianPathST(const crs::Graph& G,
 {
     std::vector<bool> Visited;
     Visited.resize(G.NumVertices(), false);
-    size_t NumVisited = 0;
-    Path = crs::GraphPath{ {}, 0.0 };
 
-    Found = _FindHamiltonianPath(G, Visited, NumVisited, StartVertex, StartVertex, Path) ? 1 : 0;
+    std::vector<std::tuple<size_t, double, bool>> Stack;
+    Stack.reserve(G.NumVertices() * G.NumVertices() * 2);
+    Stack.emplace_back(StartVertex, 0.0, true);
+
+    Path.Vertices.clear();
+    Path.Length = 0.0;
+    Path.Vertices.reserve(G.NumVertices());
+
+
+    size_t CurVertex;
+    double CurLen;
+    bool FirstExtraction;
+    size_t Deg;
+    do
+    {
+        std::tie(CurVertex, CurLen, FirstExtraction) = Stack.back();
+        Stack.pop_back();
+
+        // This means we came back from a visit in the sub-tree, so there is nothing more
+        // we can do with this node now.
+        if (!FirstExtraction)
+        {
+            Visited[CurVertex] = false;
+            Path.Vertices.pop_back();
+            continue;
+        }
+
+        // This means we have visited all the vertices, so we must check if we 
+        // have found a cycle
+        if (Path.Vertices.size() == G.NumVertices() - 1)
+        {
+            crs::Edge E(CurVertex, StartVertex);
+            // If the cycle is there, we can return the path
+            if (G.GetEdge(CurVertex, StartVertex, E))
+            {
+                Path.Vertices.push_back(CurVertex);
+                Path.Length = CurLen + E.Weight();
+                Found = true;
+                return;
+            }
+            // Otherwise, we must roll back
+            continue;
+        }
+
+        // This means this sub-tree do not offer solutions, so we can prune
+        if (_Prune(G, Visited, StartVertex, CurVertex))
+            continue;
+
+
+        // Mark as visited and get ready for the second extraction after the
+        // entire sub-tree has been visited
+        Stack.emplace_back(CurVertex, CurLen, false);
+        Visited[CurVertex] = true;
+        Path.Vertices.push_back(CurVertex);
+
+        // Push the unvisited neighbors on the stack
+        Deg = G.NumAdjacents(CurVertex);
+        for (size_t jj = 0; jj < Deg; ++jj)
+        {
+            size_t j;
+            double w;
+            std::tie(j, w) = G.GetAdjacent(CurVertex, jj);
+
+            if (Visited[j])
+                continue;
+            
+            Stack.emplace_back(j, CurLen + w, true);
+        }
+
+    } while (!Stack.empty());
+    
+    // If we get here, no path has been found
+    Found = false;
 }
 
 bool crs::FindHamiltonianPath(const crs::Graph& G,
@@ -146,62 +166,18 @@ bool crs::FindHamiltonianPath(const crs::Graph& G,
         Threads[i].join();
 
     Path = Paths[0];
-    bool Found = false;
+    bool Found = Founds[0];
     for (size_t i = 1; i < NumThreads; ++i)
     {
         if (Founds[i] == 0)
             continue;
-        Found = true;
-        if (Paths[i].Length < Path.Length)
+
+        if (!Found)
             Path = Paths[i];
+        else if (Paths[i].Length < Path.Length)
+            Path = Paths[i];
+
+        Found = true;
     }
     return Found;
 }
-
-
-// void _ForceHamiltonianPathST(const crs::Graph& G,
-//                              std::vector<bool>& Visited,
-//                              size_t& NumVisited,
-//                              size_t CurVertex,
-//                              crs::GraphPath& Path,
-//                              crs::GraphPath& Longest)
-// {
-//     Visited[CurVertex] = true;
-//     NumVisited++;
-//     if (NumVisited == G.NumVertices())
-//     {
-//         Path.Vertices.push_back(CurVertex);
-//         return;
-//     }
-    
-//     size_t Deg = G.NumAdjacents(CurVertex);
-//     size_t VCount = 0;
-//     for (size_t jj = 0; jj < Deg; ++jj)
-//     {
-//         size_t j;
-//         double w;
-//         std::tie(j, w) = G.GetAdjacent(CurVertex, jj);
-
-//         if (Visited[j])
-//         {
-//             VCount++;
-//             continue;
-//         }
-
-//         Path.Vertices.push_back(CurVertex);
-//         double OldLen = Path.Length;
-//         Path.Length += w;
-//         if (_FindHamiltonianPath(G, Visited, NumVisited, j, Path))
-//             return;
-//         Path.Vertices.pop_back();
-//         Path.Length = OldLen;
-//     }
-//     if (VCount == Deg)
-//     {
-
-//     }
-
-//     Visited[CurVertex] = false;
-//     NumVisited--;
-//     return;
-// }

@@ -18,6 +18,7 @@
 #include <crs/hamiltonian.hpp>
 
 #include <array>
+#include <chrono>
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -28,6 +29,22 @@ std::unique_ptr<VertexPositionGeometry> geometry;
 
 // Some algorithm parameters
 std::vector<size_t> samples;
+
+std::chrono::system_clock::time_point TStart;
+std::chrono::system_clock::time_point TEnd;
+
+void StartTimer()
+{
+  TStart = std::chrono::system_clock::now();
+}
+
+double StopTimer()
+{
+  TEnd = std::chrono::system_clock::now();
+  auto ETA = TEnd - TStart;
+  auto ETAus = std::chrono::duration_cast<std::chrono::microseconds>(ETA).count();
+  return ETAus * 1.0e-6;
+}
 
 // Example computation function -- this one computes and registers a scalar
 // quantity
@@ -77,8 +94,12 @@ void doWork() {
 
   std::cout << "Exported graph." << std::endl;
 
+  StartTimer();
   crs::GraphPath P;
-  if (!crs::FindHamiltonianPath(VPG, P))
+  bool HPFound = crs::FindHamiltonianPath(VPG, P);
+  double ETA = StopTimer();
+  std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
+  if (!HPFound)
   {
     std::cout << "Cannot find a Hamiltonian path." << std::endl;
     return;
@@ -131,11 +152,20 @@ int main(int argc, char **argv) {
   }
 
   crs::ImportPoints(args::get(inputSamples), samples);
-  // std::sort(samples.begin(), samples.end());
-  // samples.erase(std::unique(samples.begin(), samples.end()));
 
   // Load mesh
   std::tie(mesh, geometry) = readManifoldSurfaceMesh(args::get(inputFilename));
+
+  // std::mt19937 Eng(0);
+  // std::uniform_int_distribution<size_t> Distr(0, mesh->nVertices() - 1);
+  // for (size_t i = 0; i < 3000; ++i)
+  // {
+  //   samples.push_back(Distr(Eng));
+  //   // std::cout << samples.back() << std::endl;
+  // }
+  std::sort(samples.begin(), samples.end());
+  auto SEnd = std::unique(samples.begin(), samples.end());
+  samples.erase(SEnd, samples.end());
 
   doWork();
   
