@@ -17,15 +17,20 @@
 size_t _NumAvailableNeighs(const crs::Graph& G,
                            const std::vector<bool>& Visited,
                            size_t VID,
-                           size_t StartVertex,
-                           size_t CurVertex)
+                           size_t StartVertex)
 {
+    // Preconditions: 
+    //  - Visited[StartVertex] = true
+    //  - Visited[CurVertex] = false
+
     size_t Deg = G.NumAdjacents(VID);
     size_t Count = 0;
     for (size_t ii = 0; ii < Deg; ++ii)
     {
+        // Every unvisited neighbor is available, as well as the starting
+        // vertex and the current vertex
         size_t i = G.GetAdjacent(VID, ii).first;
-        if (i == StartVertex || i == CurVertex)
+        if (i == StartVertex)
             Count++;
         else if (!Visited[i])
             Count++;
@@ -39,17 +44,26 @@ bool _Prune(const crs::Graph& G,
             size_t StartVertex,
             size_t CurVertex)
 {
+    // Preconditions: 
+    //  - Visited[StartVertex] = true
+    //  - Visited[CurVertex] = false
+
     for (size_t i = 0; i < G.NumVertices(); ++i)
     {
+        // We don't care about visited vertices, except for the starting vertex
         if (Visited[i] && i != StartVertex)
             continue;
 
-        size_t NumAN = _NumAvailableNeighs(G, Visited, i, StartVertex, CurVertex);
+        // How many neighbors are available for a visit?
+        size_t NumAN = _NumAvailableNeighs(G, Visited, i, StartVertex);
 
-        if (NumAN < 1)
+        // If no neighbor is available for an unvisited vertex, we must prune
+        if (NumAN == 0)
             return true;
 
-        if (i != CurVertex && NumAN <= 1)
+        // If only one neighbor is available for some vertex, besides the current
+        // vertex and the starting vertex, we must prune
+        if (i != CurVertex && i != StartVertex && NumAN == 1)
             return true;
     }
 
@@ -62,13 +76,16 @@ void FindHamiltonianPathST(const crs::Graph& G,
                            size_t StartVertex,
                            size_t& Found)
 {
+    // Determines whether a vertex is visited or not
     std::vector<bool> Visited;
     Visited.resize(G.NumVertices(), false);
 
+    // The recurrence stack
     std::vector<std::tuple<size_t, double, bool>> Stack;
     Stack.reserve(G.NumVertices() * G.NumVertices() * 2);
     Stack.emplace_back(StartVertex, 0.0, true);
 
+    // Initialize the path to an empty one
     Path.Vertices.clear();
     Path.Length = 0.0;
     Path.Vertices.reserve(G.NumVertices());
@@ -78,7 +95,7 @@ void FindHamiltonianPathST(const crs::Graph& G,
     double CurLen;
     bool FirstExtraction;
     size_t Deg;
-    do
+    while (!Stack.empty())
     {
         std::tie(CurVertex, CurLen, FirstExtraction) = Stack.back();
         Stack.pop_back();
@@ -134,7 +151,7 @@ void FindHamiltonianPathST(const crs::Graph& G,
             Stack.emplace_back(j, CurLen + w, true);
         }
 
-    } while (!Stack.empty());
+    };
     
     // If we get here, no path has been found
     Found = false;
