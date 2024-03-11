@@ -17,6 +17,7 @@
 #include <cassert>
 #include <algorithm>
 #include <random>
+#include <map>
 
 
 
@@ -294,4 +295,91 @@ void crs::Graph::SortAdjacents(crs::AdjacencyOrdering Ordering,
         else
             throw std::runtime_error("Invalid adjacency ordering type.");
     }
+}
+
+
+size_t crs::Graph::ConnectedComponents(std::vector<crs::Graph>& CCs,
+                                       std::vector<std::vector<size_t>>& Idxs) const
+{
+    CCs.clear();
+    Idxs.clear();
+    if (NumVertices() == 0)
+        return 0;
+
+    // Find the connected components assigning indices.
+    // We can safely use -1 even with size_t, because the underflow guarantees
+    // that we will never have that many components.
+    std::vector<size_t> CCI;
+    CCI.resize(NumVertices(), -1);
+    size_t NumCCs = 0;
+
+    // Initialize the stack for a DFS visit.
+    std::vector<size_t> Stack;
+    Stack.reserve(NumVertices());
+    for (size_t Start = 0; Start < NumVertices(); ++Start)
+    {
+        // If we already visited the starting node, we skip it.
+        if (CCI[Start] != -1)
+            continue;
+        // Otherwise, we start a visit from it.
+        Stack.push_back(Start);
+        while (!Stack.empty())
+        {
+            size_t Cur = Stack.back();
+            Stack.pop_back();
+
+            // If never visited, it's a new component.
+            if (CCI[Cur] == -1)
+                CCI[Cur] = NumCCs++;
+            
+            size_t Deg = NumAdjacents(Cur);
+            for (size_t i = 0; i < Deg; ++i)
+            {
+                size_t Adj = GetAdjacent(Cur, i).first;
+                // If visited, skip.
+                if (CCI[Adj] != -1)
+                    continue;
+                // Otherwise, it has the same component as the current vertex
+                // and we continue the visit
+                CCI[Adj] = CCI[Cur];
+                Stack.push_back(Adj);
+            }
+        }
+    }
+
+
+    // Create the components without the edges
+    CCs.resize(NumCCs);
+    Idxs.resize(NumCCs);
+    // We also keep track of the inverse map of Idxs
+    std::vector<size_t> LocIdx;
+    LocIdx.resize(NumVertices());
+    for (size_t i = 0; i < NumVertices(); ++i)
+    {
+        CCs[CCI[i]].AddVertex();
+        Idxs[CCI[i]].push_back(i);
+        LocIdx[i] = Idxs[CCI[i]].size() - 1;
+    }
+
+    // We now add the edges
+    for (size_t i = 0; i < NumVertices(); ++i)
+    {
+        // Which component?
+        crs::Graph& CC = CCs[CCI[i]];
+
+        size_t Deg = NumAdjacents(i);
+        for (size_t jj = 0; jj < Deg; ++jj)
+        {
+            size_t j;
+            double w;
+            std::tie(j, w) = GetAdjacent(i, jj);
+
+            // By definition of component, adjacent vertices belong to the same component.
+            // We use the inverse mapping for determining which vertices must be joined.
+            CC.AddEdge(LocIdx[i], LocIdx[j], w);
+        }
+    }
+
+    // Return the number of components
+    return NumCCs;
 }

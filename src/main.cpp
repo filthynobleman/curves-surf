@@ -59,71 +59,86 @@ void doWork() {
   crs::SpheresOfInfluenceInplace(VPG);
   std::cout << "Computed SIGDT." << std::endl;
 
-  FlipEdgeNetwork FENet(*mesh, *geometry, {});
-  FENet.supportRewinding = true;
-  FENet.posGeom = geometry.get();
+  // VPG = crs::ForceDiracProperty(VPG, VP.GetSampleSampleDistances());
+  std::vector<crs::Graph> CCs;
+  std::vector<std::vector<size_t>> Idxs;
+  size_t NumCCs = VPG.ConnectedComponents(CCs, Idxs);
+  std::cout << "Computed " << NumCCs << " connected components." << std::endl;
 
-  std::vector<size_t> Samples;
-  std::vector<std::vector<Vector3>> Paths;
-
-  for (size_t i = 0; i < VPG.NumVertices(); ++i)
+  for (size_t i = 0; i < NumCCs; ++i)
   {
-    Samples.emplace_back(VP.GetSample(i));
-    size_t Deg = VPG.NumAdjacents(i);
-    for (size_t jj = 0; jj < Deg; ++jj)
+    std::vector<size_t> LocIdxs = Idxs[i];
+    for (size_t j = 0; j < LocIdxs.size(); ++j)
+      LocIdxs[j] = samples[LocIdxs[j]];
+
+    std::vector<std::vector<Vector3>> Paths;
+    crs::PathsFromGraph(CCs[i], *mesh, *geometry, LocIdxs, Paths);
+
+    std::stringstream ss;
+    ss << "test-vertices-" << std::setw(3) << std::setfill('0') << i << ".obj";
+    crs::ExportPoints(ss.str(), LocIdxs, *geometry);
+    ss = std::stringstream();
+    ss << "test-voronoi-" << std::setw(3) << std::setfill('0') << i << ".obj";
+    crs::ExportEdgeNetwork(ss.str(), Paths);
+
+    std::cout << "Exported graph." << std::endl;
+
+    StartTimer();
+    crs::GraphPath P;
+    bool HPFound = crs::FindHamiltonianPath(CCs[i], P);
+    double ETA = StopTimer();
+    std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
+    if (!HPFound)
     {
-      size_t j = VPG.GetAdjacent(i, jj).first;
-      if (j <= i)
-        continue;
+      std::cout << "Cannot find a Hamiltonian path." << std::endl;
+      std::cout << "Forcing the Dirac\'s property." << std::endl;
+      std::vector<std::vector<double>> SSDists;
+      SSDists.resize(Idxs[i].size());
+      for (size_t jj = 0; jj < SSDists.size(); ++jj)
+      {
+        for (size_t kk = 0; kk < SSDists.size(); ++kk)
+        {
+          SSDists[jj].push_back(VP.GetSampleSampleDistances()[Idxs[i][jj]][Idxs[i][kk]]);
+        }
+      }
       
-      Vertex vi = mesh->vertex(VP.GetSample(i));
-      Vertex vj = mesh->vertex(VP.GetSample(j));
-
-      auto dijpath = shortestEdgePath(*geometry, vi, vj);
-      FENet.reinitializePath({ dijpath });
-      FENet.iterativeShorten();
-
-      Paths.emplace_back(FENet.getPathPolyline3D().front());
-
-      FENet.rewind();
+      CCs[i] = crs::ForceDiracProperty(CCs[i], SSDists);
+      StartTimer();
+      bool HPFound = crs::FindHamiltonianPath(CCs[i], P);
+      double ETA = StopTimer();
+      std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
     }
+
+    std::cout << "Found a Hamiltonian path of length " << P.Length << std::endl;
+    crs::PathsFromGraphPath(CCs[i], P, *mesh, *geometry, LocIdxs, Paths);
+    
+    ss = std::stringstream();
+    ss << "test-hamilton-" << std::setw(3) << std::setfill('0') << i << ".obj";
+    crs::ExportEdgeNetwork(ss.str(), Paths);
   }
+  // std::vector<std::vector<Vector3>> Paths;
+  // crs::PathsFromGraph(VPG, *mesh, *geometry, samples, Paths);
 
-  crs::ExportPoints("test-vertices.obj", Samples, *geometry);
-  crs::ExportEdgeNetwork("test-voronoi.obj", Paths);
+  // crs::ExportPoints("test-vertices.obj", samples, *geometry);
+  // crs::ExportEdgeNetwork("test-voronoi.obj", Paths);
 
-  std::cout << "Exported graph." << std::endl;
+  // std::cout << "Exported graph." << std::endl;
 
-  StartTimer();
-  crs::GraphPath P;
-  bool HPFound = crs::FindHamiltonianPath(VPG, P);
-  double ETA = StopTimer();
-  std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
-  if (!HPFound)
-  {
-    std::cout << "Cannot find a Hamiltonian path." << std::endl;
-    return;
-  }
+  // StartTimer();
+  // crs::GraphPath P;
+  // bool HPFound = crs::FindHamiltonianPath(VPG, P);
+  // double ETA = StopTimer();
+  // std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
+  // if (!HPFound)
+  // {
+  //   std::cout << "Cannot find a Hamiltonian path." << std::endl;
+  //   return;
+  // }
 
-  std::cout << "Found a Hamiltonian path of length " << P.Length << std::endl;
-  Paths.clear();
-  for (size_t i = 0; i < P.Vertices.size(); ++i)
-  {
-    size_t j = (i + 1) % P.Vertices.size();
-
-    Vertex vi = mesh->vertex(VP.GetSample(P.Vertices[i]));
-    Vertex vj = mesh->vertex(VP.GetSample(P.Vertices[j]));
-
-    auto dijpath = shortestEdgePath(*geometry, vi, vj);
-    FENet.reinitializePath({ dijpath });
-    FENet.iterativeShorten();
-
-    Paths.emplace_back(FENet.getPathPolyline3D().front());
-
-    FENet.rewind();
-  }
+  // std::cout << "Found a Hamiltonian path of length " << P.Length << std::endl;
+  // crs::PathsFromGraphPath(VPG, P, *mesh, *geometry, samples, Paths);
   
-  crs::ExportEdgeNetwork("test-hamilton.obj", Paths);
+  // crs::ExportEdgeNetwork("test-hamilton.obj", Paths);
 }
 
 int main(int argc, char **argv) {
@@ -151,21 +166,22 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  crs::ImportPoints(args::get(inputSamples), samples);
+  // crs::ImportPoints(args::get(inputSamples), samples);
 
   // Load mesh
   std::tie(mesh, geometry) = readManifoldSurfaceMesh(args::get(inputFilename));
 
-  // std::mt19937 Eng(0);
-  // std::uniform_int_distribution<size_t> Distr(0, mesh->nVertices() - 1);
-  // for (size_t i = 0; i < 3000; ++i)
-  // {
-  //   samples.push_back(Distr(Eng));
-  //   // std::cout << samples.back() << std::endl;
-  // }
+  std::mt19937 Eng(0);
+  std::uniform_int_distribution<size_t> Distr(0, mesh->nVertices() - 1);
+  for (size_t i = 0; i < 30; ++i)
+  {
+    samples.push_back(Distr(Eng));
+    // std::cout << samples.back() << std::endl;
+  }
   std::sort(samples.begin(), samples.end());
   auto SEnd = std::unique(samples.begin(), samples.end());
   samples.erase(SEnd, samples.end());
+  std::cout << samples.size() << std::endl;
 
   doWork();
   

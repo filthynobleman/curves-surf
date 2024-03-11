@@ -83,6 +83,10 @@ public:
     // The partitioning must contian at least one sample.
     const std::vector<size_t>& GetPartitioning() const;
 
+    // Get the vector of vectors storing the distances between samples computed so far.
+    // Entry [i][j] stores the distance between the i-th and the j-th sample.
+    const std::vector<std::vector<double>>& GetSampleSampleDistances() const;
+
 
     // Build the dual Voronoi connectivity.
     // Partitioning must contain at least one sample.

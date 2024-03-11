@@ -198,3 +198,67 @@ bool crs::FindHamiltonianPath(const crs::Graph& G,
     }
     return Found;
 }
+
+void crs::FindHamiltonianPathForced(const crs::Graph& G,
+                                    crs::GraphPath& Path,
+                                    const std::vector<std::vector<double>>& Dists,
+                                    size_t NumThreads)
+{
+    if (crs::FindHamiltonianPath(G, Path, NumThreads))
+        return;
+
+    crs::Graph GF = crs::ForceDiracProperty(G, Dists);
+    crs::FindHamiltonianPath(GF, Path, NumThreads);
+}
+
+
+#include <iostream>
+
+crs::Graph crs::ForceDiracProperty(const crs::Graph& G,
+                                   const std::vector<std::vector<double>>& Dists)
+{
+    crs::Graph GH(G);
+
+    // Vector of degree/vertex pairs
+    std::vector<std::pair<size_t, size_t>> VDeg;
+    VDeg.resize(GH.NumVertices());
+    for (size_t i = 0; i < GH.NumVertices(); ++i)
+        VDeg[i] = { GH.NumAdjacents(i), i };
+
+    // Sort by descending degree
+    std::sort(VDeg.begin(), VDeg.end(), std::greater<std::pair<size_t, size_t>>{});
+
+    // Start filling from the higher degree, but adding low degree first
+    crs::Edge E(0, 1);
+    for (size_t i = 0; i < GH.NumVertices(); ++i)
+    {
+        size_t ii = VDeg[i].second;
+        bool HasChanged = VDeg[i].first < GH.NumVertices() / 2;
+        for (size_t j = GH.NumVertices() - 1; VDeg[i].first < GH.NumVertices() / 2; --j)
+        {
+            size_t jj = VDeg[j].second;
+            if (ii == jj)
+                continue;
+            // If edge is there, we have nothing to do
+            if (G.GetEdge(ii, jj, E))
+                continue;
+
+            // Otherwise, we add the edge
+            GH.AddEdge(ii, jj, Dists[ii][jj]);
+
+            VDeg[i].first++;
+            VDeg[j].first++;
+        }
+
+        // We can safely sort the vector, because at every iteration the value of
+        // the elements increases. After the i-th iteration, the first i elements
+        // have at least value N/2. Since we sort in descending order, we do not
+        // care what happen to the array, because we know that there are at least
+        // i elements with at least value N/2. So, when we move to i + 1, we know
+        // that on the left everything is fine and we can safely ignore it.
+        if (HasChanged)
+            std::sort(VDeg.begin(), VDeg.end(), std::greater<std::pair<size_t, size_t>>{});
+    }
+
+    return GH;
+}

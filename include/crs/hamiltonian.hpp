@@ -28,9 +28,13 @@ struct GraphPath
 bool FindHamiltonianPath(const crs::Graph& G,
                          crs::GraphPath& Path,
                          size_t NumThreads = 8);
+void FindHamiltonianPathForced(const crs::Graph& G,
+                               crs::GraphPath& Path,
+                               const std::vector<std::vector<double>>& Dists,
+                               size_t NumThreads = 8);
 
-crs::GraphPath ForceHamiltonianPath(const crs::Graph& G,
-                                    size_t NumThreads = 8);
+crs::Graph ForceDiracProperty(const crs::Graph& G,
+                              const std::vector<std::vector<double>>& Dists);
 
 
 } // namespace crs

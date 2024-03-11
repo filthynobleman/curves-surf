@@ -136,6 +136,14 @@ public:
     // Sorting can be ascending or descending.
     void SortAdjacents(crs::AdjacencyOrdering Ordering = crs::INDEX,
                        bool Ascending = true);
+
+
+    // Separate the graph into its connected components.
+    // Vector CCs will contain the graphs representing the single components.
+    // Idxs[i][j] contains the index of the j-th vertex of the i-th component in this graph.
+    // The method returns the number of connected components.
+    size_t ConnectedComponents(std::vector<crs::Graph>& CCs,
+                               std::vector<std::vector<size_t>>& Idxs) const;
 };
 
 } // namespace crs

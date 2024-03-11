@@ -68,6 +68,11 @@ const std::vector<size_t>& crs::VoronoiPartitioning::GetPartitioning() const
     return m_Partitioning;
 }
 
+const std::vector<std::vector<double>>& crs::VoronoiPartitioning::GetSampleSampleDistances() const
+{
+    return m_SSDist;
+}
+
 void crs::VoronoiPartitioning::AddSample(size_t VID)
 {
     assert(VID < m_Mesh.nVertices());
