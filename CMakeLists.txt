@@ -69,7 +69,7 @@ endif()
 
 # == Deps
 include_directories("${CMAKE_SOURCE_DIR}/deps/eigen")
-# include_directories("${CMAKE_SOURCE_DIR}/deps/libigl/include")
+include_directories("${CMAKE_SOURCE_DIR}/deps/json/include")
 set(GC_EIGEN_LOCATION "${CMAKE_SOURCE_DIR}/deps/eigen" CACHE PATH "Path to Eigen's latest version")
 add_subdirectory(deps/geometry-central)
 # add_subdirectory(deps/polyscope)
@@ -86,6 +86,7 @@ set(SRCS
   "${CMAKE_SOURCE_DIR}/src/crs/sig.cpp"
   "${CMAKE_SOURCE_DIR}/src/crs/hamiltonian.cpp"
   "${CMAKE_SOURCE_DIR}/src/crs/io.cpp"
+  "${CMAKE_SOURCE_DIR}/src/crs/settings.cpp"
 )
 
 
