@@ -2,7 +2,8 @@
     "mesh" : "../examples/cat0.off",
     "samples" : "../examples/cat0-samples.txt",
     "output_prefix" : "./test-",
-    "multi_components" : true,
+    "multi_components" : false,
     "force_hamiltonian" : true,
+    "use_sig" : true,
     "bias" : "distance"
 }

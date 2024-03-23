@@ -29,6 +29,7 @@ std::unique_ptr<VertexPositionGeometry> geometry;
 // Some algorithm parameters
 std::vector<size_t> samples;
 crs::Settings settings;
+size_t NThreads = 32;
 
 std::chrono::system_clock::time_point TStart;
 std::chrono::system_clock::time_point TEnd;
@@ -72,6 +73,21 @@ void doWork() {
     else
         crs::ExportEdgeNetwork(settings.OutputPrefix + "voronoi.obj", Paths);
 
+    crs::Graph MST(VP.GetSampleSampleDistances());
+    MST = MST.MinimumSpanningTree();
+    crs::GraphPath MSTP;
+    if (MST.IsChainTree(MSTP))
+    {
+        std::cout << "Graph has chain MST." << std::endl;
+        crs::PathsFromGraphPath(MST, MSTP, *mesh, *geometry, samples, Paths);
+        crs::ExportEdgeNetwork(settings.OutputPrefix + "mstgraph.obj", Paths);
+    }
+    else
+    {
+        crs::PathsFromGraph(MST, *mesh, *geometry, samples, Paths);
+        crs::ExportEdgeNetwork(settings.OutputPrefix + "mstgraph.obj", Paths);
+    }
+
     // Compute Hamiltonian cycle
     if (settings.MultipleComponents)
     {
@@ -96,7 +112,8 @@ void doWork() {
             // Find Hamiltonian cycle
             crs::GraphPath P;
             CCs[i].SortAdjacents(settings.HamiltonianBias);
-            bool HPFound = crs::FindHamiltonianPath(CCs[i], P);
+            bool HPFound = crs::FindHamiltonianPath(CCs[i], P, NThreads);
+            std::cout << StopTimer() << std::endl;
             if (!HPFound)
             {
                 // If not found, check if we should enforce Dirac's property
@@ -119,7 +136,7 @@ void doWork() {
                 // Enforce Dirac's property and recompute Hamiltonian cycle
                 CCs[i] = crs::ForceDiracProperty(CCs[i], SSDists);
                 CCs[i].SortAdjacents(settings.HamiltonianBias);
-                crs::FindHamiltonianPath(CCs[i], P);
+                crs::FindHamiltonianPath(CCs[i], P, NThreads);
             }
             ETA += StopTimer();
             TotLength += P.Length;
@@ -160,7 +177,7 @@ void doWork() {
         StartTimer();
         crs::GraphPath P;
         VPG.SortAdjacents(settings.HamiltonianBias);
-        bool HPFound = crs::FindHamiltonianPath(VPG, P);
+        bool HPFound = crs::FindHamiltonianPath(VPG, P, NThreads);
         if (!HPFound)
         {
             // If not found, check if we should enforce Dirac's property
@@ -172,10 +189,12 @@ void doWork() {
             // Enforce Dirac's property and recompute Hamiltonian cycle
             VPG = crs::ForceDiracProperty(VPG, VP.GetSampleSampleDistances());
             VPG.SortAdjacents(settings.HamiltonianBias);
-            crs::FindHamiltonianPath(VPG, P);
+            crs::FindHamiltonianPath(VPG, P, NThreads);
         }
         ETA += StopTimer();
         std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
+
+        crs::PathsFromGraphPath(VPG, P, *mesh, *geometry, samples, Paths);
 
         // Output run info
         std::ofstream Stream;

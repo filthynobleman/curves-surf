@@ -17,12 +17,6 @@
 
 namespace crs
 {
-    
-struct GraphPath
-{
-    std::vector<size_t> Vertices;
-    double Length;
-};
 
 
 bool FindHamiltonianPath(const crs::Graph& G,

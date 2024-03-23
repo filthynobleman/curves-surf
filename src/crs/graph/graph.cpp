@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <random>
 #include <map>
+#include <queue>
 
 
 
@@ -30,6 +31,16 @@ crs::Graph::Graph(size_t NVerts)
 
     m_Edges.resize(NVerts);
     m_Weights.resize(NVerts);
+}
+
+crs::Graph::Graph(const std::vector<std::vector<double>>& Distances)
+    : crs::Graph(Distances.size())
+{
+    for (size_t i = 0; i < NumVertices(); ++i)
+    {
+        for (size_t j = i + 1; j < NumVertices(); ++j)
+            AddEdge(i, j, Distances[i][j]);
+    }
 }
 
 crs::Graph::Graph(const crs::Graph& G)
@@ -382,4 +393,110 @@ size_t crs::Graph::ConnectedComponents(std::vector<crs::Graph>& CCs,
 
     // Return the number of components
     return NumCCs;
+}
+
+
+
+
+crs::Graph crs::Graph::MinimumSpanningTree() const
+{
+    std::vector<double> Costs;
+    Costs.resize(NumVertices(), std::numeric_limits<double>::infinity());
+    std::vector<size_t> Parents;
+    Parents.resize(NumVertices(), -1);
+
+    std::priority_queue<std::pair<double, size_t>,
+                        std::vector<std::pair<double, size_t>>,
+                        std::greater<std::pair<double, size_t>>> Q;
+    for (size_t i = 0; i < NumVertices(); ++i)
+        Q.emplace(std::numeric_limits<double>::infinity(), i);
+
+    std::vector<bool> Forest;
+    Forest.resize(NumVertices(), false);
+
+    size_t v;
+    double w;
+    while (!Q.empty())
+    {
+        std::tie(w, v) = Q.top();
+        Q.pop();
+
+        if (Forest[v])
+            continue;
+
+        Forest[v] = true;
+
+        size_t Deg = NumAdjacents(v);
+        for (size_t i = 0; i < Deg; ++i)
+        {
+            size_t k;
+            double d;
+            std::tie(k, d) = GetAdjacent(v, i);
+            if (Forest[k])
+                continue;
+            if (d >= Costs[k])
+                continue;
+            Costs[k] = d;
+            Parents[k] = v;
+            Q.emplace(d, k);
+        }
+    }
+
+    crs::Graph MST(NumVertices());
+    for (size_t i = 0; i < NumVertices(); ++i)
+    {
+        if (Parents[i] == -1)
+            continue;
+        MST.AddEdge(i, Parents[i], Costs[i]);
+    }
+
+    return MST;
+}
+
+
+bool crs::Graph::IsChainTree(crs::GraphPath& P) const
+{
+    P.Length = 0.0;
+    P.Vertices.clear();
+    P.Vertices.reserve(NumVertices());
+
+    std::vector<size_t> Stack;
+    for (size_t i = 0; i < NumVertices(); ++i)
+    {
+        if (NumAdjacents(i) == 1)
+        {
+            Stack.push_back(i);
+            break;
+        }
+    }
+    if (Stack.empty())
+        return false;
+    
+    std::vector<bool> Visited;
+    Visited.resize(NumVertices(), false);
+    while (!Stack.empty())
+    {
+        size_t V = Stack.back();
+        Stack.pop_back();
+
+        // Since the graph is a chain and the visit starts from an end vertex,
+        // then it is not possible to put on stack more than one vertex at time.
+        // This means that as we remove a vertex from the stack, the stack must be empty
+        if (!Stack.empty())
+            return false;
+
+        Visited[V] = true;
+        P.Vertices.push_back(V);
+
+        size_t Deg = NumAdjacents(V);
+        for (size_t i = 0; i < Deg; ++i)
+        {
+            size_t W = GetAdjacent(V, i).first;
+            if (Visited[W])
+                continue;
+            Stack.push_back(W);
+        }
+    }
+
+    return true;
 }

@@ -16,6 +16,12 @@
 
 namespace crs
 {
+    
+struct GraphPath
+{
+    std::vector<size_t> Vertices;
+    double Length;
+};
 
 class Edge
 {
@@ -89,7 +95,11 @@ private:
     size_t m_NEdges;
     
 public:
+    // Initialize a graph with the given number of nodes and no edges.
     Graph(size_t NVerts = 0);
+    // Initializes a clique graph from the given set of distances.
+    Graph(const std::vector<std::vector<double>>& Distances);
+    // Copy the given graph.
     Graph(const crs::Graph& G);
     Graph(crs::Graph&& G);
     crs::Graph& operator=(const crs::Graph& G);
@@ -144,6 +154,14 @@ public:
     // The method returns the number of connected components.
     size_t ConnectedComponents(std::vector<crs::Graph>& CCs,
                                std::vector<std::vector<size_t>>& Idxs) const;
+
+    // Computes the minimum spanning tree of the graph
+    crs::Graph MinimumSpanningTree() const;
+
+    // Determines whether this graph is a chain tree.
+    // If the returning value is true, the parameter P is set to the visit order of the chain.
+    // Otherwise, the content of P is invalid.
+    bool IsChainTree(crs::GraphPath& P) const;
 };
 
 } // namespace crs
