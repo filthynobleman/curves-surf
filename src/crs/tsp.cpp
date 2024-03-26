@@ -14,7 +14,6 @@
 #include <thread>
 #include <random>
 #include <algorithm>
-#include <iostream>
 
 
 
@@ -137,10 +136,6 @@ void crs::TSPOptimize(const std::vector<std::vector<double>>& Dists,
                 double MaybeLength = Dists[P.Vertices[i]][P.Vertices[j]] + Dists[P.Vertices[je]][P.Vertices[ie]];
                 if (MaybeLength < ActualLength)
                 {
-                    std::cout << "Path " << P.Vertices[i] << '-' << P.Vertices[ie] << ' ';
-                    std::cout << '(' << i << '-' << ie << ") ";
-                    std::cout << "intersects path " << P.Vertices[j] << '-' << P.Vertices[je] << ' ';
-                    std::cout << '(' << j << '-' << je << ')' << std::endl;
                     // To swap the edges, we must reverse the connectivity from ie to j included
                     HasInterPaths = true;
                     std::reverse(P.Vertices.begin() + ie, P.Vertices.begin() + j + 1);

@@ -1,8 +1,8 @@
 {
-    "mesh" : "../examples/10.off",
-    "samples" : "../examples/10-samples.txt",
+    "mesh" : "../examples/dog1.off",
+    "samples" : "../examples/dog1-samples.txt",
     "output_prefix" : "./alt-test-",
-    "multi_components" : false,
+    "multi_components" : true,
     "force_hamiltonian" : true,
     "use_sig" : true,
     "bias" : "distance"
