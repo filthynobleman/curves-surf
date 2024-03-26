@@ -118,7 +118,7 @@ void crs::VoronoiPartitioning::AddSample(size_t VID)
     for (size_t i = 0; i < NumSamples(); ++i)
     {
         m_SSDist[i].emplace_back(NewDists[m_Samples[i]]);
-        m_SSDist.back()[i] = NewDists[i];
+        m_SSDist.back()[i] = NewDists[m_Samples[i]];
     }
 
     m_SampleMap.emplace(VID, m_SampleMap.size());

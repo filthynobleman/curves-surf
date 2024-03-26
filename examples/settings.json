@@ -1,7 +1,7 @@
 {
-    "mesh" : "../examples/cat0.off",
-    "samples" : "../examples/cat0-samples.txt",
-    "output_prefix" : "./test-",
+    "mesh" : "../examples/10.off",
+    "samples" : "../examples/10-samples.txt",
+    "output_prefix" : "./alt-test-",
     "multi_components" : false,
     "force_hamiltonian" : true,
     "use_sig" : true,

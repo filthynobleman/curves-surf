@@ -396,6 +396,57 @@ size_t crs::Graph::ConnectedComponents(std::vector<crs::Graph>& CCs,
 }
 
 
+crs::Graph crs::Graph::MinimalConnected(const std::vector<std::vector<double>>& Dists) const
+{
+    std::vector<crs::Graph> CCs;
+    std::vector<std::vector<size_t>> Idxs;
+    size_t NumCCs = ConnectedComponents(CCs, Idxs);
+    crs::Graph Connected(*this);
+    if (NumCCs == 1)
+        return Connected;
+
+    // Create the graph of the connected components by finding
+    // the shortest edge among each pair of components
+    std::vector<std::vector<crs::Edge>> CCEdges;
+    CCEdges.resize(NumCCs);
+    crs::Graph CCGraph(NumCCs);
+    for (size_t cci = 0; cci < NumCCs; ++cci)
+    {
+        CCEdges[cci].resize(NumCCs, crs::Edge(-1, -1, std::numeric_limits<double>::infinity()));
+        // Matrix transpose
+        for (size_t ccj = 0; ccj < cci; ++ccj)
+            CCEdges[cci][ccj] = CCEdges[ccj][cci];
+        for (size_t ccj = cci + 1; ccj < NumCCs; ++ccj)
+        {
+            // Find smallest edge cost among these components
+            for (size_t i : Idxs[cci])
+            {
+                for (size_t j : Idxs[ccj])
+                {
+                    if (Dists[i][j] < CCEdges[cci][ccj].Weight())
+                        CCEdges[cci][ccj] = crs::Edge(i, j, Dists[i][j]);
+                }
+            }
+            CCGraph.AddEdge(cci, ccj, CCEdges[cci][ccj].Weight());
+        }
+    }
+
+    // Find the minimum spanning tree of the connected components graph
+    CCGraph = CCGraph.MinimumSpanningTree();
+    // Use the edges to connect the original graph
+    for (size_t i = 0; i < CCGraph.NumVertices(); ++i)
+    {
+        for (size_t jj = 0; jj < CCGraph.NumAdjacents(i); ++jj)
+        {
+            size_t j = CCGraph.GetAdjacent(i, jj).first;
+            Connected.AddEdge(CCEdges[i][j]);
+        }
+    }
+
+    return Connected;
+}
+
+
 
 
 crs::Graph crs::Graph::MinimumSpanningTree() const

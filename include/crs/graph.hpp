@@ -155,6 +155,10 @@ public:
     size_t ConnectedComponents(std::vector<crs::Graph>& CCs,
                                std::vector<std::vector<size_t>>& Idxs) const;
 
+    // Connects all the (eventually) separated components by chosing the edges of minimal
+    // cost among the input weighted connectivity.
+    crs::Graph MinimalConnected(const std::vector<std::vector<double>>& Dists) const;
+
     // Computes the minimum spanning tree of the graph
     crs::Graph MinimumSpanningTree() const;
 
