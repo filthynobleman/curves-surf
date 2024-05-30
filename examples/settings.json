@@ -1,6 +1,6 @@
 {
     "mesh" : "../examples/dog1.off",
-    "samples" : "../examples/dog1-samples.txt",
+    "samples" : "../examples/dog-samples.txt",
     "output_prefix" : "./alt-test-",
     "multi_components" : true,
     "force_hamiltonian" : true,

@@ -42,6 +42,11 @@ void PathsFromGraphPath(const crs::Graph& G,
                         geometrycentral::surface::VertexPositionGeometry& Geometry,
                         const std::vector<size_t>& Graph2Mesh,
                         std::vector<std::vector<geometrycentral::Vector3>>& Paths);
+void PathsFromGraphPath(const crs::GraphPath& GP,
+                        geometrycentral::surface::ManifoldSurfaceMesh& Mesh,
+                        geometrycentral::surface::VertexPositionGeometry& Geometry,
+                        const std::vector<size_t>& Graph2Mesh,
+                        std::vector<std::vector<geometrycentral::Vector3>>& Paths);
 void ExportEdgeNetwork(const std::string& Filename,
                        std::vector<std::vector<geometrycentral::Vector3>>& Paths);
 

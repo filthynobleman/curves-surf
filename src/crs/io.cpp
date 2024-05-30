@@ -180,3 +180,31 @@ void crs::PathsFromGraphPath(const crs::Graph& G,
         FENet.rewind();
     }
 }
+
+void crs::PathsFromGraphPath(const crs::GraphPath& GP,
+                             geometrycentral::surface::ManifoldSurfaceMesh& Mesh,
+                             geometrycentral::surface::VertexPositionGeometry& Geometry,
+                             const std::vector<size_t>& Graph2Mesh,
+                             std::vector<std::vector<geometrycentral::Vector3>>& Paths)
+{
+    geometrycentral::surface::FlipEdgeNetwork FENet(Mesh, Geometry, {});
+    FENet.supportRewinding = true;
+    FENet.posGeom = &Geometry;
+
+    Paths.clear();
+    for (size_t i = 0; i < GP.Vertices.size(); ++i)
+    {
+        size_t j = (i + 1) % GP.Vertices.size();
+
+        geometrycentral::surface::Vertex vi = Mesh.vertex(Graph2Mesh[GP.Vertices[i]]);
+        geometrycentral::surface::Vertex vj = Mesh.vertex(Graph2Mesh[GP.Vertices[j]]);
+
+        auto dijpath = geometrycentral::surface::shortestEdgePath(Geometry, vi, vj);
+        FENet.reinitializePath({ dijpath });
+        FENet.iterativeShorten();
+
+        Paths.emplace_back(FENet.getPathPolyline3D().front());
+
+        FENet.rewind();
+    }
+}

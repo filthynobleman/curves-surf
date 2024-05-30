@@ -13,7 +13,7 @@
 #include <crs/voronoi.hpp>
 #include <crs/io.hpp>
 #include <crs/sig.hpp>
-#include <crs/hamiltonian.hpp>
+#include <crs/tsp.hpp>
 #include <crs/settings.hpp>
 
 #include <array>
@@ -29,7 +29,7 @@ std::unique_ptr<VertexPositionGeometry> geometry;
 // Some algorithm parameters
 std::vector<size_t> samples;
 crs::Settings settings;
-size_t NThreads = 32;
+size_t NThreads = 16;
 
 std::chrono::system_clock::time_point TStart;
 std::chrono::system_clock::time_point TEnd;
@@ -73,148 +73,73 @@ void doWork() {
     else
         crs::ExportEdgeNetwork(settings.OutputPrefix + "voronoi.obj", Paths);
 
-    crs::Graph MST(VP.GetSampleSampleDistances());
-    MST = MST.MinimumSpanningTree();
-    crs::GraphPath MSTP;
-    if (MST.IsChainTree(MSTP))
-    {
-        std::cout << "Graph has chain MST." << std::endl;
-        crs::PathsFromGraphPath(MST, MSTP, *mesh, *geometry, samples, Paths);
-        crs::ExportEdgeNetwork(settings.OutputPrefix + "mstgraph.obj", Paths);
-    }
-    else
-    {
-        crs::PathsFromGraph(MST, *mesh, *geometry, samples, Paths);
-        crs::ExportEdgeNetwork(settings.OutputPrefix + "mstgraph.obj", Paths);
-    }
+    StartTimer();
+    // If we do not want to treat multiple components separatedly, we join the graph
+    if (!settings.MultipleComponents)
+        VPG = VPG.MinimalConnected(VP.GetSampleSampleDistances());
+    // Separate into components
+    std::vector<crs::Graph> CCs;
+    std::vector<std::vector<size_t>> Idxs;
+    size_t NumCCs = 0;
+    NumCCs = VPG.ConnectedComponents(CCs, Idxs);
+    ETA += StopTimer();
 
-    // Compute Hamiltonian cycle
-    if (settings.MultipleComponents)
+    // Compute TSP for each component
+    double TotLength = 0.0;
+    for (size_t i = 0; i < NumCCs; ++i)
     {
         StartTimer();
-        // In case of multiple components, we separate the graph into multiple subgraphs
-        std::vector<crs::Graph> CCs;
-        std::vector<std::vector<size_t>> Idxs;
-        size_t NumCCs = 0;
-        NumCCs = VPG.ConnectedComponents(CCs, Idxs);
-        ETA += StopTimer();
-
-        // Compute Hamiltonian cycle for each component
-        double TotLength = 0.0;
-        for (size_t i = 0; i < NumCCs; ++i)
+        // Compute mapping from local graph indices to mesh samples
+        std::vector<size_t> LocIdxs = Idxs[i];
+        for (size_t j = 0; j < LocIdxs.size(); ++j)
+            LocIdxs[j] = samples[LocIdxs[j]];
+        // Get sample-sample distances among the component's samples
+        std::vector<std::vector<double>> SSDists;
+        SSDists.resize(Idxs[i].size());
+        for (size_t jj = 0; jj < SSDists.size(); ++jj)
         {
-            StartTimer();
-            // Compute mapping from local graph indices to mesh samples
-            std::vector<size_t> LocIdxs = Idxs[i];
-            for (size_t j = 0; j < LocIdxs.size(); ++j)
-                LocIdxs[j] = samples[LocIdxs[j]];
-            
-            // Find Hamiltonian cycle
-            crs::GraphPath P;
-            CCs[i].SortAdjacents(settings.HamiltonianBias);
-            bool HPFound = crs::FindHamiltonianPath(CCs[i], P, NThreads);
-            std::cout << StopTimer() << std::endl;
-            if (!HPFound)
+            for (size_t kk = 0; kk < SSDists.size(); ++kk)
             {
-                // If not found, check if we should enforce Dirac's property
-                if (!settings.ForceHamiltonianPath)
-                {
-                    std::cerr << "Cannot find a Hamiltonian cycle." << std::endl;
-                    return;
-                }
-                // Get sample-sample distances among the component's samples
-                std::vector<std::vector<double>> SSDists;
-                SSDists.resize(Idxs[i].size());
-                for (size_t jj = 0; jj < SSDists.size(); ++jj)
-                {
-                    for (size_t kk = 0; kk < SSDists.size(); ++kk)
-                    {
-                        SSDists[jj].push_back(VP.GetSampleSampleDistances()[Idxs[i][jj]][Idxs[i][kk]]);
-                    }
-                }
-
-                // Enforce Dirac's property and recompute Hamiltonian cycle
-                CCs[i] = crs::ForceDiracProperty(CCs[i], SSDists);
-                CCs[i].SortAdjacents(settings.HamiltonianBias);
-                crs::FindHamiltonianPath(CCs[i], P, NThreads);
+                SSDists[jj].push_back(VP.GetSampleSampleDistances()[Idxs[i][jj]][Idxs[i][kk]]);
             }
-            ETA += StopTimer();
-            TotLength += P.Length;
-
-
-            // Compute the paths for visualization
-            std::vector<std::vector<geometrycentral::Vector3>> PathsLoc;
-            crs::PathsFromGraphPath(CCs[i], P, *mesh, *geometry, LocIdxs, PathsLoc);
-            if (i == 0)
-                Paths = PathsLoc;
-            else
-                Paths.insert(Paths.end(), PathsLoc.begin(), PathsLoc.end());
         }
-        std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
-
-        // Output run info
-        std::ofstream Stream;
-        Stream.open(settings.OutputPrefix + "info.csv", std::ios::out);
-        if (!Stream.is_open())
-        {
-            std::cerr << "Cannot open file " << settings.OutputPrefix << "info.csv for writing." << std::endl;
-            return;
-        }
-
-        Stream << "Mesh,Samples,NumSamples,NumCCs,TotLength,Time\n";
-        Stream << settings.InputMesh << ',';
-        Stream << settings.InputSamples << ',';
-        Stream << samples.size() << ',';
-        Stream << NumCCs << ',';
-        Stream << TotLength << ',';
-        Stream << ETA << '\n';
-
-        Stream.close();
-    }
-    else
-    {
-        // Find Hamiltonian path on a single component
-        StartTimer();
+        
+        // Find TSP
         crs::GraphPath P;
-        VPG.SortAdjacents(settings.HamiltonianBias);
-        bool HPFound = crs::FindHamiltonianPath(VPG, P, NThreads);
-        if (!HPFound)
-        {
-            // If not found, check if we should enforce Dirac's property
-            if (!settings.ForceHamiltonianPath)
-            {
-                std::cerr << "Cannot find a Hamiltonian cycle.";
-                return;
-            }
-            // Enforce Dirac's property and recompute Hamiltonian cycle
-            VPG = crs::ForceDiracProperty(VPG, VP.GetSampleSampleDistances());
-            VPG.SortAdjacents(settings.HamiltonianBias);
-            crs::FindHamiltonianPath(VPG, P, NThreads);
-        }
+        CCs[i].SortAdjacents(settings.HamiltonianBias);
+        crs::MetricTSP(CCs[i], SSDists, P, NThreads);
+        crs::TSPOptimize(SSDists, P);
         ETA += StopTimer();
-        std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
+        TotLength += P.Length;
 
-        crs::PathsFromGraphPath(VPG, P, *mesh, *geometry, samples, Paths);
-
-        // Output run info
-        std::ofstream Stream;
-        Stream.open(settings.OutputPrefix + "info.csv", std::ios::out);
-        if (!Stream.is_open())
-        {
-            std::cerr << "Cannot open file " << settings.OutputPrefix << "info.csv for writing." << std::endl;
-            return;
-        }
-
-        Stream << "Mesh,Samples,NumSamples,NumCCs,TotLength,Time\n";
-        Stream << settings.InputMesh << ',';
-        Stream << settings.InputSamples << ',';
-        Stream << samples.size() << ',';
-        Stream << 1 << ',';
-        Stream << P.Length << ',';
-        Stream << ETA << '\n';
-
-        Stream.close();
+        // Compute the paths for visualization
+        std::vector<std::vector<geometrycentral::Vector3>> PathsLoc;
+        crs::PathsFromGraphPath(CCs[i], P, *mesh, *geometry, LocIdxs, PathsLoc);
+        if (i == 0)
+            Paths = PathsLoc;
+        else
+            Paths.insert(Paths.end(), PathsLoc.begin(), PathsLoc.end());
     }
+    std::cout << "Elapsed time is " << ETA << " seconds." << std::endl;
+
+    // Output run info
+    std::ofstream Stream;
+    Stream.open(settings.OutputPrefix + "info.csv", std::ios::out);
+    if (!Stream.is_open())
+    {
+        std::cerr << "Cannot open file " << settings.OutputPrefix << "info.csv for writing." << std::endl;
+        return;
+    }
+
+    Stream << "Mesh,Samples,NumSamples,NumCCs,TotLength,Time\n";
+    Stream << settings.InputMesh << ',';
+    Stream << settings.InputSamples << ',';
+    Stream << samples.size() << ',';
+    Stream << NumCCs << ',';
+    Stream << TotLength << ',';
+    Stream << ETA << '\n';
+
+    Stream.close();
 
     crs::ExportEdgeNetwork(settings.OutputPrefix + "cycles.obj", Paths);
 }

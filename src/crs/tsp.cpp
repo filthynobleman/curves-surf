@@ -54,6 +54,8 @@ void _MetricTSPST(const crs::Graph& MST,
     for (size_t i = 0; i < MST.NumVertices() - 1; ++i)
         P.Length += Dists[P.Vertices[i]][P.Vertices[i + 1]];
     P.Length += Dists[P.Vertices[0]][P.Vertices.back()];
+
+    crs::TSPOptimize(Dists, P);
 }
 
 

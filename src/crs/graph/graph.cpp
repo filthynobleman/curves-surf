@@ -31,6 +31,7 @@ crs::Graph::Graph(size_t NVerts)
 
     m_Edges.resize(NVerts);
     m_Weights.resize(NVerts);
+    m_NEdges = 0;
 }
 
 crs::Graph::Graph(const std::vector<std::vector<double>>& Distances)
@@ -45,11 +46,13 @@ crs::Graph::Graph(const std::vector<std::vector<double>>& Distances)
 
 crs::Graph::Graph(const crs::Graph& G)
 {
+    m_NEdges = G.m_NEdges;
     m_Edges = G.m_Edges;
     m_Weights = G.m_Weights;
 }
 crs::Graph& crs::Graph::operator=(const crs::Graph& G)
 {
+    m_NEdges = G.m_NEdges;
     m_Edges = G.m_Edges;
     m_Weights = G.m_Weights;
     return *this;
@@ -57,11 +60,13 @@ crs::Graph& crs::Graph::operator=(const crs::Graph& G)
 
 crs::Graph::Graph(crs::Graph&& G)
 {
+    m_NEdges = G.m_NEdges;
     m_Edges = std::move(G.m_Edges);
     m_Weights = std::move(G.m_Weights);
 }
 crs::Graph& crs::Graph::operator=(crs::Graph&& G)
 {
+    m_NEdges = G.m_NEdges;
     m_Edges = std::move(G.m_Edges);
     m_Weights = std::move(G.m_Weights);
     return *this;
