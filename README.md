@@ -1,5 +1,7 @@
 # Non-Euclidean Curves
-This repository contains the implementation of the algorithm for reconstructing curves in non-Euclidean domains.
+This repository contains the implementation of the algorithm for reconstructing curves in non-Euclidean domains, as described in the paper *Reconstructing Curves from Sparse Samples on Riemannian Manifolds*. 
+ - DOI: **TBA**
+ - PDF: https://arxiv.org/pdf/2404.09661
 
 
 ## Building instructions
@@ -54,7 +56,19 @@ The file `visualization/pick_samples.py` contains a Python script for Blender fo
 After selecting the desired mesh, enable the edit mode, shift+select the samples, and run the script.
 
 
+### Reproducibility
+This repository contains the data for reproducing the experiment depicted in the teaser figure of the paper.  
+The experiment can be reproduced by running the executable without arguments (from the `build` directory) or by giving the file `examples/teaser.json` as argument.
+
+
 ## Visualization
 All the output files can be imported into Blender "as-is".  
 The vertices can be visualized using a `Geometry Node` modifier and plugging the `Mesh to Points` node between the input and the output.  
 The curves can be visualized with `right click -> convert to -> curve` and the giving them a depth from `Object data properties -> geometry -> bevel -> depth`.
+
+
+## License
+This repository is distributed under the MIT license and makes use of the following dependencies:
+ - [Eigen3](https://eigen.tuxfamily.org/index.php?title=Main_Page), distributed under the [MLP-2.0](https://www.mozilla.org/en-US/MPL/2.0/) license;
+ - [Geometry Central](https://geometry-central.net/), distributed under the [MIT](https://opensource.org/license/mit) license;
+ - [JSON for Modern C++](https://json.nlohmann.me/), distributed under the [MIT](https://opensource.org/license/mit) license.

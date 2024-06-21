@@ -1,0 +1,8 @@
+{
+    "mesh" : "../examples/fertility.obj",
+    "samples" : "../examples/teaser-samples.txt",
+    "output_prefix" : "./teaser-",
+    "multi_components" : true,
+    "force_hamiltonian" : true,
+    "use_sig" : true
+}

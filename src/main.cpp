@@ -148,18 +148,16 @@ int main(int argc, char **argv) {
 
     if (argc == 1)
     {
-        std::cerr << "Please provide the settigns file." << std::endl;
-        return EXIT_FAILURE;
+        std::cout << "No settings file provided, trying to use default ../examples/teaser.json" << std::endl;
+        settings = crs::LoadSettings("../examples/teaser.json");
     }
-
-    settings = crs::LoadSettings(argv[1]);
+    else
+        settings = crs::LoadSettings(argv[1]);
 
     crs::ImportPoints(settings.InputSamples, samples);
 
     // Load mesh
     std::tie(mesh, geometry) = readManifoldSurfaceMesh(settings.InputMesh);
-
-    std::cout << "Mesh loaded" << std::endl;
 
     // std::mt19937 Eng(0);
     // std::uniform_int_distribution<size_t> Distr(0, mesh->nVertices() - 1);
@@ -171,7 +169,6 @@ int main(int argc, char **argv) {
     std::sort(samples.begin(), samples.end());
     auto SEnd = std::unique(samples.begin(), samples.end());
     samples.erase(SEnd, samples.end());
-    std::cout << samples.size() << std::endl;
 
     doWork();
 
