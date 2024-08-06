@@ -1,7 +1,9 @@
 # Non-Euclidean Curves
 This repository contains the implementation of the algorithm for reconstructing curves in non-Euclidean domains, as described in the paper *Reconstructing Curves from Sparse Samples on Riemannian Manifolds*. 
- - DOI: **TBA**
+ - DOI: https://doi.org/10.1111/cgf.15136
  - PDF: https://arxiv.org/pdf/2404.09661
+
+ ![teaserimage](images/teaser.png)
 
 
 ## Building instructions
@@ -58,7 +60,8 @@ After selecting the desired mesh, enable the edit mode, shift+select the samples
 
 ### Reproducibility
 This repository contains the data for reproducing the experiment depicted in the teaser figure of the paper.  
-The experiment can be reproduced by running the executable without arguments (from the `build` directory) or by giving the file `examples/teaser.json` as argument.
+The experiment can be reproduced by running the executable without arguments (from the `build` directory) or by giving the file `examples/teaser.json` as argument.  
+Alternatively, you can run the PowerShell script `make_teaser.ps1` for carrying out the entire compilation process as well. The results from the teaser experiments will be produced at `build/teaser-cycles.obj`.
 
 
 ## Visualization

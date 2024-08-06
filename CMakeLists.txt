@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(gc_polyscope_example)
+project(CurvesSurf)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -90,45 +90,6 @@ set(SRCS
   "${CMAKE_SOURCE_DIR}/src/crs/settings.cpp"
 )
 
-set(SRCSALT 
-  "${CMAKE_SOURCE_DIR}/src/main-alt.cpp"
-	# add any other source files here
-  "${CMAKE_SOURCE_DIR}/src/crs/graph/edge.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/graph/graph.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/voronoi.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/sig.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/hamiltonian.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/tsp.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/io.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/settings.cpp"
-)
-
-set(SRCSCM 
-  "${CMAKE_SOURCE_DIR}/src/main-cm.cpp"
-	# add any other source files here
-  "${CMAKE_SOURCE_DIR}/src/crs/graph/edge.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/graph/graph.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/voronoi.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/sig.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/hamiltonian.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/tsp.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/io.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/settings.cpp"
-)
-
-set(SRCSMT 
-  "${CMAKE_SOURCE_DIR}/src/main-motion.cpp"
-	# add any other source files here
-  "${CMAKE_SOURCE_DIR}/src/crs/graph/edge.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/graph/graph.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/voronoi.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/sig.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/hamiltonian.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/tsp.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/io.cpp"
-  "${CMAKE_SOURCE_DIR}/src/crs/settings.cpp"
-)
-
 
 # To change the name of your executable, change "gc_project" in the lines below to whatever you want
 add_executable(CurvesSurf "${SRCS}")
@@ -136,3 +97,4 @@ target_include_directories(CurvesSurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/includ
 # add the args.hxx project which we use for command line args
 target_include_directories(CurvesSurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
 target_link_libraries(CurvesSurf geometry-central)
+set_target_properties(CurvesSurf PROPERTIES CXX_STANDARD 17)
